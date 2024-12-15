@@ -1,19 +1,40 @@
-import streamlit as st
-import pandas as pd
-import datetime as dt
+import os
 import uuid
+import pandas as pd
+import streamlit as st
+import datetime as dt
 
 # 데이터 파일 경로
-DATA_FILE = "data.csv"
-EMOTION_FILE = "emotion_data.csv"
-PRIORITY_FILE = "priority_data.csv"
+DATA_DIR = "data"
+DATA_FILE = os.path.join(DATA_DIR, "medications.csv")
+EMOTION_FILE = os.path.join(DATA_DIR, "emotions.csv")
+PRIORITY_FILE = os.path.join(DATA_DIR, "priorities.csv")
+
+# 데이터 컬럼 정의
+data_columns = ["ID", "약물 이름", "복약 시간", "복용 용량", "복약 완료"]
+emotion_columns = ["ID", "날짜", "감정", "점수", "기록"]
+priority_columns = ["ID", "작업명", "긴급도", "중요도", "상태"]
+
+# 초기 데이터 디렉토리 및 파일 생성 함수
+def initialize_files():
+    if not os.path.exists(DATA_DIR):
+        os.makedirs(DATA_DIR)
+    for file, columns in [
+        (DATA_FILE, data_columns),
+        (EMOTION_FILE, emotion_columns),
+        (PRIORITY_FILE, priority_columns)
+    ]:
+        if not os.path.exists(file) or os.path.getsize(file) == 0:
+            pd.DataFrame(columns=columns).to_csv(file, index=False)
 
 # 데이터 로드 및 저장 함수
 def load_data(file, columns):
-    if file not in st.session_state:
+    if not os.path.exists(file) or os.path.getsize(file) == 0:
+        st.session_state[file] = pd.DataFrame(columns=columns)
+    else:
         try:
             st.session_state[file] = pd.read_csv(file)
-        except FileNotFoundError:
+        except pd.errors.EmptyDataError:
             st.session_state[file] = pd.DataFrame(columns=columns)
     return st.session_state[file]
 
@@ -21,17 +42,19 @@ def save_data(file, data):
     st.session_state[file] = data
     data.to_csv(file, index=False)
 
-# 데이터 초기화
-data_columns = ["ID", "약물 이름", "복약 시간", "복용 용량", "복약 완료"]
-emotion_columns = ["ID", "날짜", "감정", "점수", "기록"]
-priority_columns = ["ID", "작업명", "긴급도", "중요도", "상태"]
+# 초기화 실행
+initialize_files()
 
+# 데이터 불러오기
 med_data = load_data(DATA_FILE, data_columns)
 emotion_data = load_data(EMOTION_FILE, emotion_columns)
 priority_data = load_data(PRIORITY_FILE, priority_columns)
 
-# **1. 복약 관리**
+# **Streamlit 앱 시작**
 st.title("마음의 정원")
+st.sidebar.title("메뉴")
+
+# **1. 복약 관리**
 st.header("💊 복약 관리")
 with st.form("add_medication"):
     med_name = st.text_input("약물 이름", placeholder="예: 항우울제")
@@ -64,7 +87,6 @@ for idx, row in med_data.iterrows():
             unsafe_allow_html=True,
         )
 
-# 데이터 다운로드
 st.download_button("복약 데이터 다운로드", med_data.to_csv(index=False), "medications.csv", "text/csv")
 
 # **2. 감정 기록**
