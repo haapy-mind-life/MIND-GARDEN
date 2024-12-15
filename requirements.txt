@@ -1,3 +1,4 @@
 streamlit==1.25.0
 pandas==1.5.3
 textblob==0.17.1
+pillow==9.4.0
